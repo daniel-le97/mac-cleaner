@@ -231,3 +231,7 @@ formatting, JSON output and CLI parsing:
 ```sh
 zig build test
 ```
+
+## License
+
+MIT. See [LICENSE](LICENSE).
