@@ -1,0 +1,11 @@
+# Normalise line endings so the same tree behaves on Windows and macOS.
+* text=auto eol=lf
+
+*.zig       text eol=lf
+*.zon       text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+.gitignore  text eol=lf
+
+# Committed release binaries must never be touched by autocrlf.
+dist/*      binary

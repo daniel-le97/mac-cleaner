@@ -1,0 +1,53 @@
+# Zig build output ----------------------------------------------------------
+.zig-cache/
+zig-cache/
+zig-out/
+
+# Native artefacts ---------------------------------------------------------
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.exe
+*.pdb
+*.ilk
+*.profraw
+*.profdata
+kcov/
+
+# Archives and disk images. `dist/` is deliberately NOT ignored: the release
+# binaries are committed so a Mac that cannot build can still run them.
+*.dmg
+*.zip
+
+# macOS --------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+
+# Windows ------------------------------------------------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Editors ------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.clangd/
+.cache/
+
+# Local notes and dumps ----------------------------------------------------
+*.log
+/tmp/
