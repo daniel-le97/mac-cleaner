@@ -89,7 +89,7 @@ fn run(init: std.process.Init, out: *std.Io.Writer, err: *std.Io.Writer) !void {
         .progress = is_tty and !opts.json and !opts.quiet,
     };
 
-    if (home.len == 0 and opts.command != .doctor) {
+    if (home.len == 0 and opts.command != .doctor and opts.command != .disk) {
         try err.writeAll("mac-cleaner: cannot determine your home directory (HOME is unset).\n");
         return;
     }
@@ -102,6 +102,7 @@ fn run(init: std.process.Init, out: *std.Io.Writer, err: *std.Io.Writer) !void {
         .artifacts => try runArtifacts(&ctx, opts),
         .big => try runBig(&ctx, opts),
         .du => try runDu(&ctx, opts),
+        .disk => try runDisk(&ctx),
         .doctor => try runDoctor(&ctx, opts),
         .list => try listRules(&ctx),
     }
@@ -283,6 +284,26 @@ fn runDu(ctx: *ui.Ctx, opts: cli.Options) !void {
     const entries = try big.dirBreakdown(ctx, root, opts.top);
     try big.renderDirs(ctx, root, entries);
     if (!ctx.json) try doctor.printDiskLine(ctx);
+}
+
+/// `disk`: total, used and available space on the startup volume. Read only.
+fn runDisk(ctx: *ui.Ctx) !void {
+    const info = doctor.disk(ctx);
+    const snapshots = try doctor.localSnapshots(ctx);
+    const version = doctor.macosVersion(ctx);
+
+    if (ctx.json) {
+        try ctx.out.print(
+            "{{\"total_bytes\": {d}, \"used_bytes\": {d}, \"available_bytes\": {d}, \"used_percent\": {d}, \"snapshots\": {d}}}\n",
+            .{ info.total, info.used, info.available, info.usedPercent(), snapshots.len },
+        );
+        return;
+    }
+
+    try doctor.renderDisk(ctx, info, snapshots, version);
+    try ctx.out.print("\n", .{});
+    try ui.indent(ctx, "to measure how much of it you could reclaim: `mac-cleaner audit`");
+    try ui.indent(ctx, "for the biggest reclaimable items: `mac-cleaner doctor`");
 }
 
 fn runDoctor(ctx: *ui.Ctx, opts: cli.Options) !void {

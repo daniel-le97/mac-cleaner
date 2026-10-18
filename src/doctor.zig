@@ -93,6 +93,65 @@ fn bar(ctx: *ui.Ctx, percent: u8) !void {
     try ctx.reset();
 }
 
+/// Prints total, used and available space, plus the local snapshot count.
+/// Shared by `disk` and `doctor`; read only.
+pub fn renderDisk(ctx: *ui.Ctx, info: Disk, snapshots: []const []const u8, version: ?[]const u8) !void {
+    try ui.title(ctx, "Disk");
+
+    if (builtin.os.tag != .macos) {
+        try ctx.paint(ui.yellow);
+        try ctx.out.writeAll("  note: this binary was built for ");
+        try ctx.out.writeAll(@tagName(builtin.os.tag));
+        try ctx.out.writeAll(", so macOS only locations will not exist here.\n");
+        try ctx.reset();
+    } else if (version) |v| {
+        try ctx.out.print("  macOS {s} ({s})\n", .{ v, @tagName(builtin.cpu.arch) });
+    }
+
+    if (!info.ok) {
+        try ctx.paint(ui.dim);
+        try ctx.out.writeAll("  could not read disk usage from `df`.\n");
+        try ctx.reset();
+        return;
+    }
+
+    var total_buf: [32]u8 = undefined;
+    var used_buf: [32]u8 = undefined;
+    var avail_buf: [32]u8 = undefined;
+    const percent = info.usedPercent();
+
+    try ctx.out.print("  ", .{});
+    try bar(ctx, percent);
+    try ctx.out.print("  {d}% used\n", .{percent});
+    try ctx.out.print("  {s} of {s} used, ", .{
+        humanize.bytes(&used_buf, info.used),
+        humanize.bytes(&total_buf, info.total),
+    });
+    try ctx.paint(if (info.available < 25 << 30) ui.red else ui.green);
+    try ctx.out.writeAll(humanize.bytes(&avail_buf, info.available));
+    try ctx.reset();
+    try ctx.out.writeAll(" available\n");
+
+    if (info.available < 10 << 30) {
+        try ctx.paint(ui.red);
+        try ctx.out.writeAll("  critically low: a macOS update needs 20-30 GB free before it will even start.\n");
+        try ctx.reset();
+    } else if (info.available < 25 << 30) {
+        try ctx.paint(ui.yellow);
+        try ctx.out.writeAll("  low: free up 30 GB before the next macOS update.\n");
+        try ctx.reset();
+    }
+
+    if (builtin.os.tag == .macos) {
+        try ctx.out.print("  local Time Machine snapshots: {d}\n", .{snapshots.len});
+        if (snapshots.len != 0) {
+            try ctx.paint(ui.dim);
+            try ctx.out.writeAll("    `sudo tmutil listlocalsnapshots /` shows them; they are one of the biggest wins on a full disk.\n");
+            try ctx.reset();
+        }
+    }
+}
+
 pub fn run(ctx: *ui.Ctx, results: []const scan.Result) !void {
     const disk_info = disk(ctx);
     const snapshots = try localSnapshots(ctx);
@@ -108,59 +167,7 @@ pub fn run(ctx: *ui.Ctx, results: []const scan.Result) !void {
         return;
     }
 
-    try ui.title(ctx, "Disk");
-
-    if (builtin.os.tag != .macos) {
-        try ctx.paint(ui.yellow);
-        try ctx.out.writeAll("  note: this binary was built for ");
-        try ctx.out.writeAll(@tagName(builtin.os.tag));
-        try ctx.out.writeAll(", so macOS only locations will not exist here.\n");
-        try ctx.reset();
-    } else if (version) |v| {
-        try ctx.out.print("  macOS {s} ({s})\n", .{ v, @tagName(builtin.cpu.arch) });
-    }
-
-    if (disk_info.ok) {
-        var total_buf: [32]u8 = undefined;
-        var used_buf: [32]u8 = undefined;
-        var avail_buf: [32]u8 = undefined;
-        const percent = disk_info.usedPercent();
-
-        try ctx.out.print("  ", .{});
-        try bar(ctx, percent);
-        try ctx.out.print("  {d}% used\n", .{percent});
-        try ctx.out.print("  {s} of {s} used, ", .{
-            humanize.bytes(&used_buf, disk_info.used),
-            humanize.bytes(&total_buf, disk_info.total),
-        });
-        try ctx.paint(if (disk_info.available < 25 << 30) ui.red else ui.green);
-        try ctx.out.writeAll(humanize.bytes(&avail_buf, disk_info.available));
-        try ctx.reset();
-        try ctx.out.writeAll(" available\n");
-
-        if (disk_info.available < 10 << 30) {
-            try ctx.paint(ui.red);
-            try ctx.out.writeAll("  critically low: a macOS update needs 20-30 GB free before it will even start.\n");
-            try ctx.reset();
-        } else if (disk_info.available < 25 << 30) {
-            try ctx.paint(ui.yellow);
-            try ctx.out.writeAll("  low: free up 30 GB before the next macOS update.\n");
-            try ctx.reset();
-        }
-    } else {
-        try ctx.paint(ui.dim);
-        try ctx.out.writeAll("  could not read disk usage from `df`.\n");
-        try ctx.reset();
-    }
-
-    if (builtin.os.tag == .macos) {
-        try ctx.out.print("  local Time Machine snapshots: {d}\n", .{snapshots.len});
-        if (snapshots.len != 0) {
-            try ctx.paint(ui.dim);
-            try ctx.out.writeAll("    `sudo tmutil listlocalsnapshots /` shows them; they are one of the biggest wins on a full disk.\n");
-            try ctx.reset();
-        }
-    }
+    try renderDisk(ctx, disk_info, snapshots, version);
 
     // ------------------------------------------------------------- top targets
     var shown: usize = 0;

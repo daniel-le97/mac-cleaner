@@ -13,6 +13,7 @@ pub const Command = enum {
     artifacts,
     big,
     du,
+    disk,
     doctor,
     list,
     help,
@@ -195,6 +196,7 @@ pub const help_text =
     \\  artifacts    find node_modules, target, .zig-cache, ... in your projects
     \\  big          list the largest files under a path
     \\  du           show the size of each entry in a directory
+    \\  disk         total, used and available space on the startup volume
     \\  doctor       disk summary and a suggested order of operations
     \\  list         show every cleanup rule and what it removes
     \\  help         this text
@@ -230,6 +232,7 @@ pub const help_text =
     \\  without --apply, and every run prints the list before it deletes.
     \\
     \\examples
+    \\  mac-cleaner disk                     how much space is left? (read only)
     \\  mac-cleaner audit                    check everything, delete nothing
     \\  mac-cleaner scan                     what is using the disk? (read only)
     \\  mac-cleaner clean --dry-run          same answer, as a deletion plan

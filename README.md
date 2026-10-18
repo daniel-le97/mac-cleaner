@@ -34,9 +34,10 @@ The rule is simple and enforced in code, not by convention:
   paths containing `.` or `..` are rejected outright.
 - Symlinks are unlinked, never followed. A directory rule never empties a
   directory that is itself a symlink.
-- The artifact scanner refuses any directory containing a git repository (or
-  submodule) up to four levels deep, and only matches a fixed list of known
-  build-output names.
+- The artifact scanner only matches a fixed list of known build-output names,
+  and refuses to delete a matched folder if that folder *itself* contains a git
+  repository (or submodule) within four levels. A project being a git repo is
+  fine: its `node_modules` is still removable.
 - Nothing is deleted without `--apply` (and `--dry-run` always wins over it), and
   every run prints the full plan first.
 
@@ -97,9 +98,21 @@ mac-cleaner clean         delete reclaimable data; dry run unless --apply
 mac-cleaner artifacts     find node_modules, target, .zig-cache, ... in projects
 mac-cleaner big [path]    list the largest files under a path
 mac-cleaner du [path]     show the size of each entry in a directory
+mac-cleaner disk          total, used and available space on the startup volume
 mac-cleaner doctor        disk summary and a suggested order of operations
 mac-cleaner list          show every rule and what it removes
 ```
+
+### How much space is there?
+
+```sh
+mac-cleaner disk
+```
+
+prints the startup volume's total, used and available space as a usage bar and
+in bytes, and counts local Time Machine snapshots. It reads `df` and nothing
+else, so it is instant and read only. `--json` returns one object:
+`{"total_bytes": ..., "used_bytes": ..., "available_bytes": ..., "used_percent": ..., "snapshots": ...}`.
 
 ### Check everything, delete nothing
 
@@ -129,6 +142,7 @@ A typical first run on a full machine:
 
 ```sh
 mac-cleaner audit                      # everything, read only, one total
+mac-cleaner disk                       # total, used and available right now
 mac-cleaner doctor                     # what is going on, what to do first
 mac-cleaner scan                       # sizes for ~110 known locations
 mac-cleaner clean                      # dry run at the "recreatable" level
@@ -141,9 +155,9 @@ mac-cleaner big ~/Downloads --top 10   # biggest individual files
 
 ### Looking without touching anything
 
-`audit`, `scan`, `artifacts`, `du`, `big` and `doctor` are read-only. They only
-open directories and read file metadata; there is no deletion code on those
-paths at all. `scan` ends with the amount you could reclaim at each safety
+`audit`, `scan`, `artifacts`, `du`, `big`, `disk` and `doctor` are read-only.
+They only open directories and read file metadata; there is no deletion code on
+those paths at all. `scan` ends with the amount you could reclaim at each safety
 level:
 
 ```
